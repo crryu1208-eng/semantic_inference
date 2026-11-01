@@ -46,7 +46,7 @@ struct OutputPublisher::Impl {
       : config(config) {
     // TODO(nathan) think about param for alpha
     if (config.publish_labels) {
-      label_pub = ianvs::ImagePublisher(node, "semantic/image_raw", 1);
+      label_pub = ianvs::ImagePublisher(node, "semantic/image_raw", config.label_queue_size);
     }
 
     if (config.publish_color) {
@@ -142,6 +142,8 @@ void declare_config(OutputPublisher::Config& config) {
   config::field(config.publish_color, "publish_color");
   config::field(config.publish_overlay, "publish_overlay");
   config::field(config.overlay_alpha, "overlay_alpha");
+  config::field(config.label_queue_size, "label_queue_size");
+  config::check(config.label_queue_size, config::GT, 0, "label_queue_size");
 }
 
 }  // namespace semantic_inference

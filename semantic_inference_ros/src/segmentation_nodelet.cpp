@@ -68,6 +68,9 @@ class SegmentationNode : public rclcpp::Node {
     ImageRotator::Config image_rotator;
     bool show_config = true;
     bool show_output_config = false;
+    //! Subscribe to color with reliable QoS (bag replay) instead of best-effort sensor QoS
+    bool reliable_input = false;
+    size_t input_queue_size = 5;
     struct Status {
       std::string nickname = "semantic_inference";
       size_t rate_window_size = 10;
@@ -128,6 +131,9 @@ void declare_config(SegmentationNode::Config& config) {
   field(config.image_rotator, "image_rotator");
   field(config.show_config, "show_config");
   field(config.show_output_config, "show_output_config");
+  field(config.reliable_input, "reliable_input");
+  field(config.input_queue_size, "input_queue_size");
+  check(config.input_queue_size, GT, 0, "input_queue_size");
   field(config.status, "status");
 }
 
@@ -166,7 +172,11 @@ SegmentationNode::SegmentationNode(const rclcpp::NodeOptions& options)
       [](const auto& msg) { return msg->header.stamp; });
 
   sub_.registerCallback(&ImageWorker::addMessage, worker_.get());
-  sub_.subscribe("color/image_raw");
+  auto qos = rclcpp::SensorDataQoS().keep_last(config.input_queue_size);
+  if (config.reliable_input) {
+    qos.reliable();
+  }
+  sub_.subscribe("color/image_raw", qos);
 
   const auto period_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
       std::chrono::duration<double>(config.status.period_s));

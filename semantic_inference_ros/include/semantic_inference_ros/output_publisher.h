@@ -51,6 +51,8 @@ class OutputPublisher {
     bool publish_color = true;
     bool publish_overlay = true;
     double overlay_alpha = 0.4;
+    //! History depth of the label publisher (raise for lossless bag replay)
+    size_t label_queue_size = 1;
   } const config;
 
   OutputPublisher(const Config& config, Interface node);
