@@ -34,6 +34,7 @@
 #include <config_utilities/config.h>
 #include <config_utilities/validation.h>
 
+#include <chrono>
 #include <memory>
 
 #include "semantic_inference/image_utilities.h"
@@ -51,13 +52,29 @@ namespace semantic_inference {
 struct Segmenter::Impl {
   explicit Impl(const ModelConfig& config) : model(config) {}
   Model model;
+  double fill_ms = 0.0;
+  double run_ms = 0.0;
+  size_t count = 0;
   SegmentationResult infer(const cv::Mat& color, const cv::Mat& depth) {
+    const auto t0 = std::chrono::steady_clock::now();
     if (!model.setInputs(color, depth)) {
       SLOG(ERROR) << "Failed to set input(s) for model!";
       return {};
     }
 
-    return model.infer();
+    const auto t1 = std::chrono::steady_clock::now();
+    auto result = model.infer();
+    const auto t2 = std::chrono::steady_clock::now();
+    using ms = std::chrono::duration<double, std::milli>;
+    fill_ms += ms(t1 - t0).count();
+    run_ms += ms(t2 - t1).count();
+    if (++count == 50) {
+      SLOG(INFO) << "segmenter ms (50 frames): input fill " << fill_ms / count
+                 << " enqueue+copy " << run_ms / count;
+      fill_ms = run_ms = 0.0;
+      count = 0;
+    }
+    return result;
   }
 };
 #else

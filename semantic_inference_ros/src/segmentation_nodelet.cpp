@@ -37,6 +37,7 @@
 #include <semantic_inference/model_config.h>
 #include <semantic_inference/segmenter.h>
 
+#include <array>
 #include <atomic>
 #include <chrono>
 #include <mutex>
@@ -209,8 +210,10 @@ void SegmentationNode::runSegmentation(const Image::ConstSharedPtr& msg) {
   const auto start = std::chrono::steady_clock::now();
   cv::Mat scaled_image = image_resizer_.resizeForModelInput(img_ptr->image);
   const auto rotated = image_rotator_.rotate(scaled_image);
+  const auto t_pre = std::chrono::steady_clock::now();
 
   const auto result = segmenter_->infer(rotated);
+  const auto t_infer = std::chrono::steady_clock::now();
   if (!result) {
     SLOG(ERROR) << "failed to run inference!";
     recordStatus(0.0, "Failed to run inference");
@@ -220,8 +223,26 @@ void SegmentationNode::runSegmentation(const Image::ConstSharedPtr& msg) {
   const auto derotated = image_rotator_.derotate(result.labels);
   const auto descaled =
       image_resizer_.restoreToOriginal(derotated, img_ptr->image.size());
+  const auto t_post = std::chrono::steady_clock::now();
   output_pub_.publish(img_ptr->header, descaled, img_ptr->image);
   const auto end = std::chrono::steady_clock::now();
+  {
+    // per-step timing (ms), averaged and logged every 50 frames
+    using ms = std::chrono::duration<double, std::milli>;
+    static std::array<double, 4> acc{};
+    static size_t n = 0;
+    acc[0] += ms(t_pre - start).count();
+    acc[1] += ms(t_infer - t_pre).count();
+    acc[2] += ms(t_post - t_infer).count();
+    acc[3] += ms(end - t_post).count();
+    if (++n == 50) {
+      SLOG(INFO) << "timing ms (50 frames): resize " << acc[0] / n << " infer(incl. input fill) "
+                 << acc[1] / n << " restore " << acc[2] / n << " publish(relabel) "
+                 << acc[3] / n;
+      acc = {};
+      n = 0;
+    }
+  }
 
   const auto elapsed =
       std::chrono::duration_cast<std::chrono::duration<double>>(end - start);

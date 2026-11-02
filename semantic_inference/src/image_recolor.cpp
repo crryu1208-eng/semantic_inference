@@ -217,11 +217,20 @@ void ImageRecolor::relabelImage(const cv::Mat& classes, cv::Mat& output) const {
                cv::INTER_NEAREST);
   }
 
+  // lookup table over the class ids present (one map lookup per id, not per pixel)
+  double min_id, max_id;
+  cv::minMaxLoc(resized_classes, &min_id, &max_id);
+  const int lo = static_cast<int>(min_id);
+  std::vector<Label> lut(static_cast<int>(max_id) - lo + 1);
+  for (size_t i = 0; i < lut.size(); ++i) {
+    lut[i] = getRemappedLabel(static_cast<Label>(lo + static_cast<int>(i)));
+  }
+
   for (int r = 0; r < resized_classes.rows; ++r) {
+    const Label* in = resized_classes.ptr<Label>(r);
+    Label* out = output.ptr<Label>(r);
     for (int c = 0; c < resized_classes.cols; ++c) {
-      Label* pixel = output.ptr<Label>(r, c);
-      const auto class_id = resized_classes.at<Label>(r, c);
-      *pixel = getRemappedLabel(class_id);
+      out[c] = lut[in[c] - lo];
     }
   }
 }

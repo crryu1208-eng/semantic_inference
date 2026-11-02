@@ -59,7 +59,7 @@ std::filesystem::path ModelConfig::model_path() const {
 }
 
 std::filesystem::path ModelConfig::engine_path() const {
-  return model_path().replace_extension(".trt");
+  return model_path().replace_extension(fp16 ? ".fp16.trt" : ".trt");
 }
 
 void declare_config(ModelConfig& config) {
@@ -69,6 +69,10 @@ void declare_config(ModelConfig& config) {
   field<Path>(config.model_file, "model_file");
   field(config.log_severity, "log_severity");
   field(config.force_rebuild, "force_rebuild");
+  field(config.fp16, "fp16");
+  field(config.min_optimization_size, "min_optimization_size");
+  field(config.target_optimization_size, "target_optimization_size");
+  field(config.max_optimization_size, "max_optimization_size");
   field(config.color, "color");
   field(config.depth, "depth");
   // checks

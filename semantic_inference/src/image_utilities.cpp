@@ -72,6 +72,24 @@ void ColorConverter::fillImage(const cv::Mat& input, cv::Mat& output) const {
     input_addr = {0, 1, 2};
   }
 
+  if (is_chw_order && img.type() == CV_8UC3 && output.type() == CV_32F) {
+    // vectorized path: one scaled conversion per channel straight into the CHW planes
+    // (same arithmetic as convert(): ((v / 255) - mean) / stddev)
+    std::vector<cv::Mat> channels;
+    cv::split(img, channels);
+    for (int c = 0; c < 3; ++c) {
+      double scale = config.map_to_unit_range ? 1.0 / 255.0 : 1.0;
+      double shift = 0.0;
+      if (config.normalize) {
+        shift = -config.mean[c] / config.stddev[c];
+        scale /= config.stddev[c];
+      }
+      cv::Mat plane(rows, cols, CV_32F, output.ptr<float>(c));
+      channels[input_addr[c]].convertTo(plane, CV_32F, scale, shift);
+    }
+    return;
+  }
+
   for (int row = 0; row < img.rows; ++row) {
     for (int col = 0; col < img.cols; ++col) {
       const uint8_t* pixel = img.ptr<uint8_t>(row, col);

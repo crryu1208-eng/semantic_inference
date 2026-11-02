@@ -43,6 +43,8 @@ struct ModelConfig {
   std::filesystem::path model_file;
   std::string log_severity = "INFO";
   bool force_rebuild = false;
+  //! Build the TensorRT engine with FP16 kernels allowed (cached as <model>.fp16.trt)
+  bool fp16 = false;
   size_t min_optimization_size = 100;
   size_t max_optimization_size = 2000;
   size_t target_optimization_size = 500;

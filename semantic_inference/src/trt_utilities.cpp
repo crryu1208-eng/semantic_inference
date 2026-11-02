@@ -310,6 +310,12 @@ EnginePtr buildEngineFromOnnx(const ModelConfig& model_config, IRuntime& runtime
   }
 
   std::unique_ptr<nvinfer1::IBuilderConfig> config(builder->createBuilderConfig());
+  if (model_config.fp16) {
+    if (!builder->platformHasFastFp16()) {
+      SLOG(WARNING) << "FP16 requested but the platform has no fast FP16 support";
+    }
+    config->setFlag(nvinfer1::BuilderFlag::kFP16);
+  }
   auto* profile = builder->createOptimizationProfile();
   for (int i = 0; i < net->getNbInputs(); ++i) {
     const auto input_tensor = net->getInput(i);

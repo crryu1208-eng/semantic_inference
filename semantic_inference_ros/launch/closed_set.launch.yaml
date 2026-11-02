@@ -13,6 +13,11 @@ launch:
   - arg: {name: model_config, default: $(find-pkg-share semantic_inference_ros)/config/models/$(var model_name).yaml, description: Model-specific configuration}
   - arg: {name: use_prerecorded, default: 'false', description: Remap prerecorded labels}
   - arg: {name: force_rebuild, default: 'false', description: Force TensorRT to rebuild engine}
+  - arg: {name: fp16, default: 'false', description: Build/use an FP16 TensorRT engine (<model>.fp16.trt)}
+  - arg: {name: model_width, default: '-1', description: Resize input to this width for inference (-1 keeps the image size)}
+  - arg: {name: model_height, default: '-1', description: Resize input to this height for inference (-1 keeps the image size)}
+  - arg: {name: publish_color, default: 'true', description: Publish the recolored label image}
+  - arg: {name: publish_overlay, default: 'true', description: Publish the label overlay image}
   # Run options
   - arg: {name: debug, default: 'false', description: Run with GDB}
   - arg: {name: verbose, default: 'true', description: Disable console logging if false}
@@ -50,7 +55,9 @@ launch:
       args: >
         --config-utilities-file $(var model_config)
         --config-utilities-file $(find-pkg-share semantic_inference_ros)/config/label_groupings/$(var labelspace_name).yaml@output/recolor
-        --config-utilities-yaml {segmenter: {model: {model_file: $(var model_name).onnx, force_rebuild: $(var force_rebuild)}}}
+        --config-utilities-yaml {segmenter: {model: {model_file: $(var model_name).onnx, force_rebuild: $(var force_rebuild), fp16: $(var fp16)}}}
+        --config-utilities-yaml {image_resizer: {width: $(var model_width), height: $(var model_height)}}
+        --config-utilities-yaml {output: {publish_color: $(var publish_color), publish_overlay: $(var publish_overlay)}}
         --config-utilities-yaml {output: {recolor: {colormap_path: $(var colormap_path)}}}
         --config-utilities-yaml {worker: {max_queue_size: $(var max_image_queue_size), image_separation_s: $(var min_separation_s)}}
         --config-utilities-yaml {image_rotator: {rotation: $(var rotation_type)}}
